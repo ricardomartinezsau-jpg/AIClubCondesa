@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Copias de seguridad locales
+*.bak
+
+# Secretos: la API key va en variable de entorno, nunca en el repo
+.env
+.streamlit/secrets.toml
+
+# Base vectorial local
+.chroma/
+chroma_db/
