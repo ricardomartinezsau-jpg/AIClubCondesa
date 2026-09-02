@@ -1,4 +1,6 @@
-google-genai>=1.0.0
+google-genai>=2.20.0
 chromadb>=0.5.0
 streamlit>=1.30.0
 pypdf>=4.0.0
+numpy>=1.26.0
+pandas>=2.0.0

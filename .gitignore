@@ -6,11 +6,17 @@ venv/
 
 # Copias de seguridad locales
 *.bak
+*_backup.ipynb
 
 # Secretos: la API key va en variable de entorno, nunca en el repo
 .env
 .streamlit/secrets.toml
 
-# Base vectorial local
+# Base vectorial local y bases de datos temporales
 .chroma/
 chroma_db/
+*.db
+
+# IDE & Notebooks
+.ipynb_checkpoints/
+.claude/
