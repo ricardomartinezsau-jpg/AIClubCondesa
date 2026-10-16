@@ -1,12 +1,12 @@
 """Visor didáctico de libretas — Cohorte 2 del AI Club Condesa.
 
-Muestra cada libreta en tres vistas:
+Muestra cada libreta en tres vistas, para el entorno elegido (Kaggle o local):
   - Crudo: tal cual llegó de Kaggle (nunca se modifica).
-  - Rayos X: solo las celdas que hubo que corregir, con el error real, el diff y el porqué.
-  - Corregido: la versión que sí corre en local.
+  - Rayos X: solo las celdas que hubo que corregir en ese entorno, con el error real, el diff y el porqué.
+  - Corregido: la versión que sí corre en ese entorno.
 
-El "qué cambió" se calcula aquí comparando crudo vs corregido; las fichas en criticas/
-solo aportan el porqué. La app no llama a ningún modelo.
+El "qué cambió" se calcula aquí comparando crudo vs corregido/<entorno>/; las fichas en
+criticas/<entorno>/ solo aportan el porqué. La app no llama a ningún modelo.
 """
 
 import base64
@@ -22,6 +22,9 @@ RAIZ = Path(__file__).parent
 CRUDO = RAIZ / "crudo"
 CORREGIDO = RAIZ / "corregido"
 CRITICAS = RAIZ / "criticas"
+
+# Nombre visible → subcarpeta en corregido/ y criticas/. Kaggle va primero: ahí trabaja la clase.
+ENTORNOS = {"Kaggle": "kaggle", "Local": "local"}
 
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
@@ -48,8 +51,8 @@ def leer(ruta: Path):
     return cargar_libreta(ruta.read_text(encoding="utf-8"))
 
 
-def leer_criticas(nombre: str) -> dict:
-    ruta = CRITICAS / (Path(nombre).stem + ".json")
+def leer_criticas(nombre: str, entorno: str) -> dict:
+    ruta = CRITICAS / entorno / (Path(nombre).stem + ".json")
     if not ruta.exists():
         return {"resumen": "", "criticas": []}
     return json.loads(ruta.read_text(encoding="utf-8"))
@@ -134,7 +137,7 @@ def diff_unificado(antes: str, despues: str) -> str:
     return "\n".join(lineas)
 
 
-def mostrar_rayos_x(crudo, corregido, fichas: dict):
+def mostrar_rayos_x(crudo, corregido, fichas: dict, entorno: str):
     cambiadas = celdas_cambiadas(crudo, corregido)
     criticas = {c["celda"]: c for c in fichas.get("criticas", [])}
 
@@ -144,6 +147,9 @@ def mostrar_rayos_x(crudo, corregido, fichas: dict):
     col3.metric("Verificadas corriendo", sum(1 for c in criticas.values() if c.get("verificado")))
     if fichas.get("resumen"):
         st.info(fichas["resumen"])
+
+    if not cambiadas:
+        st.success(f"En {entorno} el crudo corre tal cual: no hubo que cambiar ninguna celda.")
 
     sin_ficha = [i for i in cambiadas if i not in criticas]
     if sin_ficha:
@@ -166,7 +172,7 @@ def mostrar_rayos_x(crudo, corregido, fichas: dict):
             st.caption(f"{CATEGORIAS.get(categoria, categoria)} · {estado}")
 
             if ficha.get("error_real"):
-                st.markdown("**Qué pasó al correr el crudo en local**")
+                st.markdown(f"**Qué pasó al correr el crudo en {entorno}**")
                 st.code(ficha["error_real"], language=None, wrap_lines=True)
 
             st.markdown("**Qué cambió**")
@@ -210,17 +216,20 @@ def main():
         st.title("🔬 Visor de libretas")
         st.caption("AI Club Condesa · Cohorte 2")
         nombre = st.selectbox("Libreta", libretas)
+        entorno = st.radio("¿Dónde la corres?", list(ENTORNOS), horizontal=True)
         st.markdown(
             "**Crudo**: tal cual llegó de Kaggle, nunca se toca.\n\n"
-            "**Rayos X**: solo lo que hubo que arreglar para que corra en local, y por qué.\n\n"
-            "**Corregido**: la versión que sí corre."
+            f"**Rayos X**: solo lo que hubo que arreglar para que corra en {entorno}, y por qué.\n\n"
+            f"**Corregido**: la versión que sí corre en {entorno}."
         )
 
+    carpeta = ENTORNOS[entorno]
     crudo = leer(CRUDO / nombre)
-    corregido = leer(CORREGIDO / nombre)
-    fichas = leer_criticas(nombre)
+    corregido = leer(CORREGIDO / carpeta / nombre)
+    fichas = leer_criticas(nombre, carpeta)
 
     st.title(nombre.removesuffix(".ipynb"))
+    st.caption(f"Entorno: {entorno}")
     tab_crudo, tab_rayos, tab_corr = st.tabs(["📄 Crudo", "🩻 Rayos X", "✅ Corregido"])
 
     with tab_crudo:
@@ -229,7 +238,7 @@ def main():
     if corregido is None:
         for tab in (tab_rayos, tab_corr):
             with tab:
-                st.info("Esta libreta todavía no tiene versión corregida.")
+                st.info(f"Esta libreta todavía no se ha corrido en {entorno}.")
         return
 
     if len(corregido.cells) != len(crudo.cells):
@@ -237,7 +246,7 @@ def main():
         return
 
     with tab_rayos:
-        mostrar_rayos_x(crudo, corregido, fichas)
+        mostrar_rayos_x(crudo, corregido, fichas, entorno)
     with tab_corr:
         mostrar_libreta(corregido, set(celdas_cambiadas(crudo, corregido)))
 
