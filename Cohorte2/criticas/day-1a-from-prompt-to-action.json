@@ -1,5 +1,5 @@
 {
-  "resumen": "Corrida en Windows con Python 3.12, google-adk 2.12 e IPython 9. De 33 celdas, 6 tuvieron que cambiar: 3 porque dependen de Kaggle, 1 por una librería que cambió, 1 porque bloquea la libreta y 1 porque la congelaba ~7 minutos. Las preguntas al agente (celdas 20 y 23) no cambiaron de código; fallan porque esta llave no tiene cuota para Google Search.",
+  "resumen": "Corrida en Windows con Python 3.12, google-adk 2.12 e IPython 9. De 33 celdas, 6 tuvieron que cambiar: 3 porque dependen de Kaggle, 1 por una librería que cambió, 1 porque bloquea la libreta y 1 porque la congelaba ~7 minutos cuando se acaba la cuota. Con esos cambios la libreta corre completa en local, incluidas las preguntas al agente con Google Search.",
   "criticas": [
     {
       "celda": 6,
@@ -23,9 +23,9 @@
       "celda": 12,
       "titulo": "Los reintentos congelaban la libreta unos 7 minutos",
       "categoria": "proceso-bloqueante",
-      "error_real": "La celda 20 superó 90 segundos sin responder. Al llamar al modelo directo, el error real llega en 0.1 s: 429 RESOURCE_EXHAUSTED (cuota agotada).",
-      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y 343 segundos. Ante un error de cuota que no se va a resolver solo, la libreta se queda congelada ~7 minutos antes de mostrar el error. En Kaggle no se notaba porque ahí la cuota sí alcanzaba.",
-      "como_se_arreglo": "`exp_base=2`: esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si el problema es real lo muestra en ~15 segundos.",
+      "error_real": "En una corrida, la celda 20 superó 90 segundos sin responder. Al llamar al modelo directo, el error real llegaba en 0.1 s: 429 RESOURCE_EXHAUSTED (cuota de Google Search agotada en ese momento).",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y 343 segundos. Cuando se acaba la cuota, la libreta se queda congelada ~7 minutos antes de mostrar el error, y parece que algo se rompió. En Kaggle no se notaba porque ahí la cuota sí alcanzaba.",
+      "como_se_arreglo": "`exp_base=2`: esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en ~15 segundos. Comprobado en ambos casos: con la cuota agotada falló en segundos con un mensaje claro, y con cuota disponible respondió normal.",
       "verificado": true
     },
     {
@@ -58,8 +58,8 @@
   ],
   "notas": [
     {
-      "titulo": "Celdas 20 y 23: tu llave no tiene cuota para Google Search",
-      "texto": "El código está bien y no se cambió. El agente usa la herramienta `google_search` y esta llave recibe `429 RESOURCE_EXHAUSTED` en cualquier modelo que la use (probado con gemini-3.5-flash-lite, gemini-3.5-flash y gemini-flash-lite-latest). Sin la búsqueda, el mismo modelo responde en ~1 segundo. Es un límite de la cuenta, no del código: revisa tu cuota en https://ai.dev/rate-limit."
+      "titulo": "Celdas 20 y 23: el 429 era un tope temporal de cuota",
+      "texto": "El código de estas celdas no se cambió. En la primera corrida, la búsqueda en Google devolvía `429 RESOURCE_EXHAUSTED` con cualquier modelo (la cuota de búsqueda estaba agotada en ese momento), mientras que sin búsqueda el modelo respondía en ~1 segundo. Horas después, la misma llave respondió normal: las salidas guardadas son de esa corrida, con datos frescos (por eso el clima de Londres no coincide con el que guardó Kaggle). Si te vuelve a salir un 429, espera o revisa tu cuota en https://ai.dev/rate-limit."
     },
     {
       "titulo": "Descartado: \"cambiar el modelo a gemini-2.5-flash\"",
