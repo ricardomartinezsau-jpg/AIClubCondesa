@@ -35,15 +35,17 @@ CATEGORIAS = {
 }
 
 
+# La caché se indexa por el contenido del archivo: si la libreta cambia en GitHub,
+# el visor en línea la vuelve a leer sin reiniciar la app.
 @st.cache_data
-def cargar_libreta(ruta: str, _mtime: float):
-    return nbformat.read(ruta, as_version=4)
+def cargar_libreta(contenido: str):
+    return nbformat.reads(contenido, as_version=4)
 
 
 def leer(ruta: Path):
     if not ruta.exists():
         return None
-    return cargar_libreta(str(ruta), ruta.stat().st_mtime)
+    return cargar_libreta(ruta.read_text(encoding="utf-8"))
 
 
 def leer_criticas(nombre: str) -> dict:
