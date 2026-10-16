@@ -1,0 +1,73 @@
+{
+  "resumen": "Corrida en Windows con Python 3.12, google-adk 2.12 e IPython 9. De 33 celdas, 6 tuvieron que cambiar: 3 porque dependen de Kaggle, 1 por una librería que cambió, 1 porque bloquea la libreta y 1 porque la congelaba ~7 minutos. Las preguntas al agente (celdas 20 y 23) no cambiaron de código; fallan porque esta llave no tiene cuota para Google Search.",
+  "criticas": [
+    {
+      "celda": 6,
+      "titulo": "La llave se leía de un servicio que solo existe en Kaggle",
+      "categoria": "entorno-kaggle",
+      "error_real": "ModuleNotFoundError: No module named 'kaggle_secrets'",
+      "por_que": "`kaggle_secrets` es la caja fuerte de llaves de Kaggle. Fuera de Kaggle esa librería no existe, así que la celda truena antes de llegar al `try`, y sin llave todas las llamadas al modelo fallan después (\"No API key was provided\").",
+      "como_se_arreglo": "La llave se guarda en un archivo `.env` en tu computadora (nunca se sube a GitHub) y se carga con `python-dotenv`. Si no la encuentra, avisa cómo crearla en lugar de tronar.",
+      "verificado": true
+    },
+    {
+      "celda": 10,
+      "titulo": "Importación vieja de IPython y un proxy que solo existe en Kaggle",
+      "categoria": "dependencia",
+      "error_real": "ImportError: cannot import name 'display' from 'IPython.core.display'",
+      "por_que": "Dos problemas en la misma celda. (1) IPython 9 movió `display` a `IPython.display`; Kaggle usa una versión vieja donde todavía funcionaba. Esto Gemini no lo detectó: solo aparece al correrla. (2) La función armaba una dirección al proxy de Kaggle (`kkb-production.jupyter-proxy.kaggle.net`) leyendo partes de la ruta del servidor de Kaggle; en tu máquina esa ruta no existe y en local no hace falta proxy.",
+      "como_se_arreglo": "Se importa desde `IPython.display` y la función se reemplaza por `get_adk_local_url()`, que solo muestra el enlace a `http://127.0.0.1:8000`.",
+      "verificado": true
+    },
+    {
+      "celda": 12,
+      "titulo": "Los reintentos congelaban la libreta unos 7 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "La celda 20 superó 90 segundos sin responder. Al llamar al modelo directo, el error real llega en 0.1 s: 429 RESOURCE_EXHAUSTED (cuota agotada).",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y 343 segundos. Ante un error de cuota que no se va a resolver solo, la libreta se queda congelada ~7 minutos antes de mostrar el error. En Kaggle no se notaba porque ahí la cuota sí alcanzaba.",
+      "como_se_arreglo": "`exp_base=2`: esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si el problema es real lo muestra en ~15 segundos.",
+      "verificado": true
+    },
+    {
+      "celda": 25,
+      "titulo": "`adk create` no se encuentra y además se queda esperando respuestas",
+      "categoria": "entorno-kaggle",
+      "error_real": "\"adk\" no se reconoce como un comando interno o externo, programa o archivo por lotes ejecutable.",
+      "por_que": "Tres cosas: (1) en Windows el comando `adk` no está a la vista de la libreta si el entorno virtual no está activado; (2) sin `--api_key`, ADK hace preguntas interactivas (telemetría y tipo de backend) que una celda no puede contestar; (3) en Windows ADK truena al imprimir emojis (UnicodeEncodeError) aunque sí crea los archivos. La versión original pasaba la llave en el comando, lo que la deja expuesta en la lista de procesos.",
+      "como_se_arreglo": "Se llama a ADK con el mismo Python de la libreta (`sys.executable -m google.adk.cli`), se le contestan las preguntas por la entrada estándar (telemetría: no; backend: Google AI; la llave) y se fuerza UTF-8. La llave nunca aparece en el comando ni en la salida.",
+      "verificado": true
+    },
+    {
+      "celda": 27,
+      "titulo": "Usaba la función de proxy de Kaggle",
+      "categoria": "entorno-kaggle",
+      "error_real": "NameError: name 'get_adk_proxy_url' is not defined (porque la celda 10 tronó antes de definirla)",
+      "por_que": "Dependía de la celda 10. Aunque la celda 10 corriera, la dirección del proxy de Kaggle no sirve en local.",
+      "como_se_arreglo": "Llama a la nueva `get_adk_local_url()`.",
+      "verificado": true
+    },
+    {
+      "celda": 29,
+      "titulo": "`adk web` secuestra la libreta para siempre",
+      "categoria": "proceso-bloqueante",
+      "error_real": "\"adk\" no se reconoce como un comando interno o externo. (En Kaggle corrió, pero la celda nunca termina: su salida acaba en \"Aborted!\" porque hubo que detenerla a mano.)",
+      "por_que": "`adk web` es un servidor: se queda escuchando hasta que lo apagas. Con `!` la celda nunca termina y no puedes correr nada más en la libreta. Además `--url_prefix` solo tenía sentido con el proxy de Kaggle.",
+      "como_se_arreglo": "Se lanza en segundo plano con `subprocess.Popen` en el puerto 8000. La libreta queda libre y se apaga con `adk_web.terminate()`. Comprobado aparte: el servidor arranca en ~8 segundos y lista a `sample-agent`.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "Celdas 20 y 23: tu llave no tiene cuota para Google Search",
+      "texto": "El código está bien y no se cambió. El agente usa la herramienta `google_search` y esta llave recibe `429 RESOURCE_EXHAUSTED` en cualquier modelo que la use (probado con gemini-3.5-flash-lite, gemini-3.5-flash y gemini-flash-lite-latest). Sin la búsqueda, el mismo modelo responde en ~1 segundo. Es un límite de la cuenta, no del código: revisa tu cuota en https://ai.dev/rate-limit."
+    },
+    {
+      "titulo": "Descartado: \"cambiar el modelo a gemini-2.5-flash\"",
+      "texto": "Gemini sugirió cambiar `gemini-3.5-flash-lite` por `gemini-2.5-flash`. Al correrlo: `gemini-3.5-flash-lite` existe y responde; `gemini-2.5-flash` da `404 NOT_FOUND` porque ya fue retirado. Ese \"arreglo\" habría roto la libreta."
+    },
+    {
+      "titulo": "Descartado: \"el agente de la interfaz web es distinto al del notebook\"",
+      "texto": "Es cierto que `sample-agent` no tiene `google_search`, pero la propia libreta lo avisa en la celda 30 (\"This sample agent does not have any tools enabled\"). Es intencional, no un error."
+    }
+  ]
+}
