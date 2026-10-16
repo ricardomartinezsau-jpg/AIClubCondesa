@@ -1,0 +1,41 @@
+{
+  "resumen": "Corrida en Kaggle (Python 3.11, la versión del curso de octubre de 2026, idéntica al crudo). En Kaggle casi todo funciona como está: solo 2 de 33 celdas cambiaron. La 12, porque ante un error de cuota la libreta se congelaba ~2 minutos, y la 25, porque al volver a correr la libreta se quedaba esperando una respuesta para siempre. Con una llave con saldo, la libreta corregida corrió completa en Kaggle, incluida la interfaz web.",
+  "criticas": [
+    {
+      "celda": 12,
+      "titulo": "Los reintentos congelaban la libreta unos 2 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "Celda 20, después de ~2 minutos sin responder:\nClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. ...'}}\nComo Kaggle detiene «Run All» en el primer error, el resto de la libreta ya no corre.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando la llave no tiene cuota para buscar en Google, la celda se queda «corriendo» unos 2 minutos sin decir nada antes de fallar, y parece que Kaggle se trabó.",
+      "como_se_arreglo": "`exp_base=2`: esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en ~15 segundos. Comprobado en Kaggle con una llave con saldo: las preguntas al agente respondieron normal. El caso de cuota agotada con `exp_base=2` se comprobó en la corrida local.",
+      "verificado": true
+    },
+    {
+      "celda": 25,
+      "titulo": "Al volver a correr la libreta, `adk create` se queda esperando para siempre",
+      "categoria": "proceso-bloqueante",
+      "error_real": "Non-empty folder already exist: '/kaggle/working/sample-agent'\nOverride existing content? [y/N]:\n(la celda se queda corriendo sin fin; hubo que detenerla a mano: «Aborted!»)",
+      "por_que": "La primera vez la celda crea la carpeta `sample-agent` y funciona. Pero esa carpeta sobrevive aunque reinicies la sesión, así que si la libreta se corre otra vez (por ejemplo, con «Run All» después de un error), `adk create` pregunta si quieres sobrescribirla. En Kaggle una celda con `!` no puede recibir tu respuesta, así que se queda esperando para siempre y bloquea todo lo que sigue.",
+      "como_se_arreglo": "Antes de crear, revisa si la carpeta ya existe: si existe, la reutiliza y lo avisa («sample-agent ya existe: se reutiliza»); si no, corre el mismo `adk create` de siempre. Comprobado en Kaggle al volver a correr. La primera vez corre el mismo comando del crudo, que funcionó en la primera corrida.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "Celdas 20 y 23: si sale 429, el problema es la llave, no el código",
+      "texto": "Con la llave que estaba guardada en los Secrets de Kaggle, la pregunta al agente falló con `429 RESOURCE_EXHAUSTED`. En el mismo minuto, otra llave de un proyecto con saldo respondió en menos de 2 segundos, y al ponerla en Kaggle la libreta corrió completa. La cuota se cobra por proyecto de Google: tener saldo en una cuenta no ayuda si la llave que pegaste en Kaggle es de otro proyecto (por ejemplo, uno en la capa gratuita, donde la búsqueda en Google se agota rápido). Revisa en https://aistudio.google.com/api-keys qué llave tiene facturación y en https://ai.dev/rate-limit qué límite estás topando."
+    },
+    {
+      "titulo": "En Kaggle no hace falta tocar la llave, las importaciones ni el proxy",
+      "texto": "Las celdas 6 (`kaggle_secrets`), 10 (`IPython.core.display` y el proxy), 27 y 29 (`adk web --url_prefix`) fallan en local, pero en Kaggle funcionan tal cual: es el entorno para el que se escribieron. Que la celda 29 nunca «termine» es normal en Kaggle: es un servidor, y la interfaz web abrió bien desde el botón de la celda 27. Por eso la versión de Kaggle solo cambia 2 celdas y la local cambia 6."
+    },
+    {
+      "titulo": "Aviso amarillo de `thought_signature`: no es un error",
+      "texto": "En las respuestas del agente sale `Warning: there are non-text parts in the response: ['thought_signature']`. Es un aviso de la librería: el modelo manda también una firma de su razonamiento y la librería solo muestra el texto. La respuesta llega completa."
+    },
+    {
+      "titulo": "Token del proxy tachado",
+      "texto": "La salida de la celda 27 incluía el enlace a la interfaz web con el token de la sesión de Kaggle. La propia libreta pide no compartirlo, así que en esta copia se tachó (`<token-tachado>`). Lo que se ve es todo lo demás que imprimió la celda."
+    }
+  ]
+}
