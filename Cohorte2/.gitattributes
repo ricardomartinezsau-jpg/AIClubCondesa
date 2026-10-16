@@ -1,0 +1,2 @@
+# El crudo se guarda byte a byte: sin conversión de saltos de línea, para que su huella no cambie al clonar en Windows
+crudo/** -text
