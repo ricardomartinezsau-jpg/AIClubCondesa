@@ -1,5 +1,5 @@
 {
-  "resumen": "Corrida en Windows con Python 3.12, google-adk 2.12 e IPython 9. De 33 celdas, 6 tuvieron que cambiar: 3 porque dependen de Kaggle, 1 por una librería que cambió, 1 porque bloquea la libreta y 1 porque la congelaba ~7 minutos cuando se acaba la cuota. Con esos cambios la libreta corre completa en local, incluidas las preguntas al agente con Google Search.",
+  "resumen": "Corrida en Windows con Python 3.12, google-adk 2.12 e IPython 9. De 33 celdas, 6 tuvieron que cambiar: 3 porque dependen de Kaggle, 1 por una librería que cambió, 1 porque bloquea la libreta y 1 porque la congelaba ~2 minutos cuando se acaba la cuota. Con esos cambios la libreta corre completa en local, incluidas las preguntas al agente con Google Search.",
   "criticas": [
     {
       "celda": 6,
@@ -21,10 +21,10 @@
     },
     {
       "celda": 12,
-      "titulo": "Los reintentos congelaban la libreta unos 7 minutos",
+      "titulo": "Los reintentos congelaban la libreta unos 2 minutos",
       "categoria": "proceso-bloqueante",
       "error_real": "En una corrida, la celda 20 superó 90 segundos sin responder. Al llamar al modelo directo, el error real llegaba en 0.1 s: 429 RESOURCE_EXHAUSTED (cuota de Google Search agotada en ese momento).",
-      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y 343 segundos. Cuando se acaba la cuota, la libreta se queda congelada ~7 minutos antes de mostrar el error, y parece que algo se rompió. En Kaggle no se notaba porque ahí la cuota sí alcanzaba.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando se acaba la cuota, la libreta se queda congelada ~2 minutos antes de mostrar el error, y parece que algo se rompió.",
       "como_se_arreglo": "`exp_base=2`: esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en ~15 segundos. Comprobado en ambos casos: con la cuota agotada falló en segundos con un mensaje claro, y con cuota disponible respondió normal.",
       "verificado": true
     },
