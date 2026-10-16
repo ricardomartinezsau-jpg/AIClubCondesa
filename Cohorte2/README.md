@@ -1,10 +1,10 @@
 # Cohorte 2 — Visor didáctico de libretas
 
-Cada libreta del curso de Kaggle se ve en tres vistas:
+Cada libreta del curso de Kaggle se ve en tres vistas, para dos entornos: **Kaggle** (donde trabaja la clase) y **Local** (tu computadora).
 
 - **📄 Crudo**: tal cual llegó de Kaggle. Nunca se toca; su huella está en `crudo.lock.json`.
-- **🩻 Rayos X**: solo las celdas que hubo que corregir para que corra en local, con el error real que salió, qué cambió (calculado, no escrito a mano) y por qué.
-- **✅ Corregido**: la versión que sí corre en local.
+- **🩻 Rayos X**: solo las celdas que hubo que corregir para que corra en ese entorno, con el error real que salió, qué cambió (calculado, no escrito a mano) y por qué.
+- **✅ Corregido**: la versión que sí corre en ese entorno.
 
 ## Correr el visor
 
@@ -19,29 +19,29 @@ El visor no llama a ningún modelo: no necesita llave ni cuesta por uso.
 
 1. Copia `.env.example` como `.env` y pon tu llave de Gemini (`.env` nunca se sube).
 2. Instala lo que pide la libreta (para ADK: `pip install google-adk python-dotenv jupyter`).
-3. Abre `corregido/<libreta>.ipynb` en Jupyter.
+3. Abre `corregido/local/<libreta>.ipynb` en Jupyter. En Kaggle, importa `corregido/kaggle/<libreta>.ipynb` (File → Import Notebook) y conecta `GOOGLE_API_KEY` en Add-ons → Secrets.
 
 ## Sumar una libreta nueva
 
 1. Suelta el `.ipynb` de Kaggle en `crudo/` y agrega su huella:
    `python -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" crudo/<libreta>.ipynb`
    → pégala en `crudo.lock.json`.
-2. Córrela tal cual en local y anota cada error real.
-3. Copia el crudo a `corregido/` y arregla **solo lo crítico** (lo que truena o engaña), sin agregar ni borrar celdas.
-4. Escribe la ficha de cada celda cambiada en `criticas/<libreta>.json`.
+2. Córrela tal cual en cada entorno (Kaggle y local) y anota cada error real.
+3. Copia el crudo a `corregido/<entorno>/` (kaggle o local) y arregla **solo lo crítico** (lo que truena o engaña), sin agregar ni borrar celdas.
+4. Escribe la ficha de cada celda cambiada en `criticas/<entorno>/<libreta>.json`. Si en un entorno no hubo que cambiar nada, deja el corregido igual al crudo: el visor lo dice.
 5. Corre `python herramientas/verificar.py` antes de cada commit: falla si el crudo cambió, si una celda cambiada no tiene ficha o si hay una llave expuesta.
 
 ## Formato de las fichas
 
 ```json
 {
-  "resumen": "Una frase sobre qué le pasó a esta libreta en local.",
+  "resumen": "Una frase sobre qué le pasó a esta libreta en este entorno.",
   "criticas": [
     {
       "celda": 6,
       "titulo": "Nombre corto del problema",
       "categoria": "entorno-kaggle | dependencia | secreto | proceso-bloqueante | modelo | lógica",
-      "error_real": "Mensaje que salió al correr el crudo en local",
+      "error_real": "Mensaje que salió al correr el crudo en este entorno",
       "por_que": "Explicación para estudiante",
       "como_se_arreglo": "Qué se hizo",
       "verificado": true

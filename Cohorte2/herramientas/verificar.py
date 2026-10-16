@@ -2,9 +2,11 @@
 
 Falla (código 1) si:
   - un crudo cambió respecto a su huella en crudo.lock.json, o no tiene huella;
-  - crudo y corregido no tienen el mismo número de celdas;
-  - una celda corregida no tiene ficha en criticas/, o una ficha apunta a una celda sin cambios;
-  - aparece una llave de API en los archivos que se van a commitear.
+  - hay libretas en corregido/ fuera de una carpeta de entorno (kaggle/ o local/);
+  - crudo y corregido/<entorno>/ no tienen el mismo número de celdas;
+  - una celda corregida no tiene ficha en criticas/<entorno>/, o una ficha apunta a una celda sin cambios;
+  - aparece una llave de API, o un enlace al proxy de Kaggle con token (fuera de crudo/),
+    en los archivos que se van a commitear.
 
 Uso: python herramientas/verificar.py
 """
@@ -19,6 +21,8 @@ import nbformat
 
 RAIZ = Path(__file__).resolve().parent.parent
 PATRON_LLAVE = re.compile(r"AIza[0-9A-Za-z_\-]{35}")
+# Enlace al proxy de Kaggle con el token de una sesión: la libreta pide no compartirlo.
+PATRON_PROXY_KAGGLE = re.compile(r"jupyter-proxy\.kaggle\.net/k/\d+/eyJ")
 IGNORADOS = {".venv", ".env", "__pycache__", ".ipynb_checkpoints", "sample-agent"}
 
 
@@ -48,30 +52,35 @@ def revisar_crudos(errores: list[str]):
 
 
 def revisar_correcciones(errores: list[str]):
-    for ruta in sorted((RAIZ / "corregido").glob("*.ipynb")):
+    sueltos = [p.name for p in (RAIZ / "corregido").glob("*.ipynb")]
+    if sueltos:
+        errores.append(f"corregido/: libretas fuera de una carpeta de entorno (kaggle/ o local/): {sueltos}")
+    for ruta in sorted((RAIZ / "corregido").glob("*/*.ipynb")):
+        entorno = ruta.parent.name
+        etiqueta = f"{entorno}/{ruta.name}"
         crudo_ruta = RAIZ / "crudo" / ruta.name
         if not crudo_ruta.exists():
-            errores.append(f"{ruta.name}: hay corregido pero no crudo")
+            errores.append(f"{etiqueta}: hay corregido pero no crudo")
             continue
         crudo = nbformat.read(crudo_ruta, as_version=4)
         corregido = nbformat.read(ruta, as_version=4)
         if len(crudo.cells) != len(corregido.cells):
             errores.append(
-                f"{ruta.name}: crudo tiene {len(crudo.cells)} celdas y corregido {len(corregido.cells)}"
+                f"{etiqueta}: crudo tiene {len(crudo.cells)} celdas y corregido {len(corregido.cells)}"
             )
             continue
 
         cambiadas = {
             i for i, (a, b) in enumerate(zip(crudo.cells, corregido.cells)) if fuente(a) != fuente(b)
         }
-        fichas_ruta = RAIZ / "criticas" / (ruta.stem + ".json")
+        fichas_ruta = RAIZ / "criticas" / entorno / (ruta.stem + ".json")
         fichas = json.loads(fichas_ruta.read_text(encoding="utf-8")) if fichas_ruta.exists() else {}
         con_ficha = {c["celda"] for c in fichas.get("criticas", [])}
 
         for i in sorted(cambiadas - con_ficha):
-            errores.append(f"{ruta.name}: la celda {i} cambió y no tiene ficha")
+            errores.append(f"{etiqueta}: la celda {i} cambió y no tiene ficha")
         for i in sorted(con_ficha - cambiadas):
-            errores.append(f"{ruta.name}: la ficha de la celda {i} apunta a una celda sin cambios")
+            errores.append(f"{etiqueta}: la ficha de la celda {i} apunta a una celda sin cambios")
 
 
 def revisar_llaves(errores: list[str]):
@@ -85,6 +94,9 @@ def revisar_llaves(errores: list[str]):
             continue
         if PATRON_LLAVE.search(contenido) or (propia and propia in contenido):
             errores.append(f"{ruta.relative_to(RAIZ)}: contiene una llave de API")
+        # El crudo se queda tal cual llegó de Kaggle (trae el enlace de la sesión del autor del curso).
+        if ruta.parent.name != "crudo" and PATRON_PROXY_KAGGLE.search(contenido):
+            errores.append(f"{ruta.relative_to(RAIZ)}: contiene un enlace al proxy de Kaggle con token de sesión")
 
 
 def main() -> int:
