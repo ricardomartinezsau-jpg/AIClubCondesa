@@ -1,0 +1,46 @@
+{
+  "resumen": "Corrida en Windows con Python 3.12 y google-adk 2.12. De 64 celdas, 3 tuvieron que cambiar: 1 porque depende de Kaggle, 1 porque congelaba la libreta ~2 minutos cuando se acaba la cuota y 1 porque el bucle de la sección 5 nunca se detenía (y a veces borraba el cuento). Con esos cambios la libreta corre completa en local: los cuatro sistemas de agentes responden.",
+  "criticas": [
+    {
+      "celda": 6,
+      "titulo": "La llave se leía de un servicio que solo existe en Kaggle",
+      "categoria": "entorno-kaggle",
+      "error_real": "ModuleNotFoundError: No module named 'kaggle_secrets'\nY después, en cada celda que llama al modelo (20, 31, 43 y 57):\nValueError: No API key was provided. Please pass a valid API key.",
+      "por_que": "`kaggle_secrets` es la caja fuerte de llaves de Kaggle. Fuera de Kaggle esa librería no existe, así que la celda truena antes de llegar al `try` y la llave nunca se carga. Es el mismo problema de la libreta day-1a.",
+      "como_se_arreglo": "Igual que en day-1a: la llave se guarda en un archivo `.env` en tu computadora (nunca se sube a GitHub) y se carga con `python-dotenv`. Si no la encuentra, avisa cómo crearla en lugar de tronar.",
+      "verificado": true
+    },
+    {
+      "celda": 10,
+      "titulo": "Los reintentos congelaban la libreta unos 2 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "En esta corrida no se agotó la cuota, así que no apareció solo. Se midió aparte contra un servidor falso que siempre contesta 429 RESOURCE_EXHAUSTED (no gasta cuota): con `exp_base=7` la llamada se quedó colgada 119 segundos (esperas de 1, 8, 50 y 60 s) antes de mostrar:\nClientError: 429 RESOURCE_EXHAUSTED.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando se acaba la cuota, la celda se queda «corriendo» unos 2 minutos sin decir nada y parece que algo se rompió. En esta libreta pesa más que en day-1a: hay 4 agentes que buscan en Google, 3 de ellos al mismo tiempo, así que es más fácil topar la cuota de búsqueda.",
+      "como_se_arreglo": "Igual que en day-1a: `exp_base=2`, con esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en unos 17 segundos (medido con el mismo servidor falso). Con cuota disponible, la libreta corrió completa con este cambio.",
+      "verificado": true
+    },
+    {
+      "celda": 51,
+      "titulo": "`exit_loop` no detiene el bucle (y a veces borra el cuento)",
+      "categoria": "lógica",
+      "error_real": "No sale ningún error rojo. En la celda 57 el crítico responde «APPROVED» en la primera vuelta y aun así el bucle da otra vuelta completa (CriticAgent > APPROVED aparece dos veces). Con `max_iterations=4`, en 2 de 2 pruebas el bucle corrió las 4 vueltas aunque el agente llamó a `exit_loop` cada vez. En una de ellas el cuento guardado terminó siendo «The critique is APPROVED.»: la historia se perdió.",
+      "por_que": "Para que un `LoopAgent` termine antes de tiempo, algún agente tiene que avisarle que «suba» el control (`escalate`). La función original solo devuelve un diccionario que dice «approved»: el agente lo lee, pero el bucle no se entera y sigue hasta `max_iterations`. Con `max_iterations=2` casi no se nota, por eso parece que funciona. Y como el RefinerAgent guarda su respuesta en `current_story`, en las vueltas de sobra a veces escribe algo como «la crítica está aprobada» en lugar del cuento, y eso es lo que queda al final.",
+      "como_se_arreglo": "`exit_loop` recibe `tool_context` (ADK se lo pasa solo) y marca `tool_context.actions.escalate = True` antes de devolver el mismo mensaje. Es lo mismo que hace la herramienta `exit_loop` que ya trae ADK. Comprobado: con `max_iterations=4`, en 2 de 2 pruebas y en la corrida completa de la libreta, el bucle se detuvo tras la primera aprobación y el cuento quedó intacto.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "Aviso de «deprecated» en SequentialAgent, ParallelAgent y LoopAgent: no es un error",
+      "texto": "En ADK 2.12 las celdas 29, 41 y 55 muestran `DeprecationWarning: SequentialAgent is deprecated in favor of Workflow`. Es un aviso de que en versiones futuras de ADK estas piezas se reemplazarán por `Workflow`; hoy funcionan bien y el propio aviso dice que `Workflow` todavía no puede usarse dentro de un agente LLM."
+    },
+    {
+      "titulo": "Celda 43: sin llave, el error sale como texto y la celda «termina» bien",
+      "texto": "Al correr el crudo sin llave, las celdas 20, 31 y 57 se marcan con error, pero la 43 (los tres investigadores en paralelo) solo imprime el error como texto y la libreta sigue como si nada. Si usas «Run All», revisa la salida de la 43: que no esté marcada en rojo no significa que haya funcionado."
+    },
+    {
+      "titulo": "Aviso amarillo de `JSON_SCHEMA_FOR_FUNC_DECL`: no es un error",
+      "texto": "La celda 20 muestra `UserWarning: [EXPERIMENTAL] feature FeatureName.JSON_SCHEMA_FOR_FUNC_DECL is enabled`. Es la librería avisando que usa una función experimental para describirle las herramientas al modelo. La respuesta llega completa."
+    }
+  ]
+}
