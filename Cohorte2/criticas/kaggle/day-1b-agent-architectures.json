@@ -1,0 +1,41 @@
+{
+  "resumen": "Corrida en Kaggle (Python 3.11, la versión del curso de octubre de 2026, idéntica al crudo). La llave y las importaciones funcionan tal cual; 2 de 64 celdas cambiaron. La 10, porque ante un error de cuota la libreta se congelaba ~2 minutos, y la 51, porque el bucle de la sección 5 no se detenía cuando el crítico aprobaba el cuento. Con esos cambios la libreta corregida corrió completa en Kaggle.",
+  "criticas": [
+    {
+      "celda": 10,
+      "titulo": "Los reintentos congelaban la libreta unos 2 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "En las corridas en Kaggle no se agotó la cuota, así que no apareció solo. Es la misma configuración que en day-1a congeló Kaggle ~2 minutos con:\nClientError: 429 RESOURCE_EXHAUSTED.\nMedido aparte contra un servidor falso que siempre contesta 429: con `exp_base=7` la llamada tardó 119 segundos en fallar.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando la llave no tiene cuota, la celda se queda «corriendo» unos 2 minutos sin decir nada y parece que Kaggle se trabó. En esta libreta pesa más que en day-1a: hay 4 agentes que buscan en Google, 3 de ellos al mismo tiempo, así que es más fácil topar la cuota de búsqueda.",
+      "como_se_arreglo": "`exp_base=2`: esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en unos 17 segundos (medido con el mismo servidor falso). Con este cambio la libreta corrió completa en Kaggle.",
+      "verificado": true
+    },
+    {
+      "celda": 51,
+      "titulo": "`exit_loop` no detiene el bucle",
+      "categoria": "lógica",
+      "error_real": "No sale ningún error rojo. Al correr el crudo en Kaggle, en la celda 57 el crítico respondió «APPROVED» en la primera vuelta y aun así el bucle dio otra vuelta completa: «CriticAgent > APPROVED» aparece dos veces y el RefinerAgent reescribe el mismo cuento dos veces.",
+      "por_que": "Para que un `LoopAgent` termine antes de tiempo, algún agente tiene que avisarle que «suba» el control (`escalate`). La función original solo devuelve un diccionario que dice «approved»: el agente lo lee, pero el bucle no se entera y sigue hasta `max_iterations`. Con `max_iterations=2` casi no se nota, por eso parece que funciona. En las pruebas locales, en las vueltas de sobra el RefinerAgent llegó a guardar «The critique is APPROVED.» en lugar del cuento.",
+      "como_se_arreglo": "Igual que en local: `exit_loop` recibe `tool_context` (ADK se lo pasa solo) y marca `tool_context.actions.escalate = True` antes de devolver el mismo mensaje. Comprobado en Kaggle: el crítico aprobó una sola vez, el bucle se detuvo ahí y el cuento quedó intacto.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "En Kaggle no hace falta tocar la llave",
+      "texto": "La celda 6 (`kaggle_secrets`) truena en local, pero en Kaggle funciona tal cual. Solo hay que marcar la casilla de `GOOGLE_API_KEY` en Add-ons → Secrets: si la llave ya está guardada pero sin marcar, la libreta no la ve. Por eso la versión de Kaggle cambia 2 celdas y la local 3."
+    },
+    {
+      "titulo": "«Run All» puede detenerse a la mitad si la ventana no está a la vista",
+      "texto": "Dos veces, con la ventana del navegador minimizada, «Run All» se detuvo sin ningún error después de la sección 3 (las celdas de abajo quedaron sin correr). Con la ventana al frente corrió completa. Si te pasa, revisa que la última celda tenga número; si no, vuelve a correr desde ahí."
+    },
+    {
+      "titulo": "Avisos amarillos de `thought_signature` y `Unclosed client session`: no son errores",
+      "texto": "En cada respuesta sale `Warning: there are non-text parts in the response: ['thought_signature']`: el modelo manda también una firma de su razonamiento y la librería solo muestra el texto. En una corrida del crudo, la celda 57 mostró además varias líneas `ERROR:asyncio:Unclosed client session`; son conexiones que la librería no cerró al terminar, no afectan la respuesta y no aparecieron en la corrida corregida."
+    },
+    {
+      "titulo": "En Kaggle no aparece el aviso de «deprecated»",
+      "texto": "En local (ADK 2.12) las celdas 29, 41 y 55 avisan que `SequentialAgent`, `ParallelAgent` y `LoopAgent` serán reemplazados por `Workflow`. En Kaggle no aparece, probablemente porque Kaggle trae una versión anterior de ADK. Hoy las tres funcionan bien en ambos entornos."
+    }
+  ]
+}
