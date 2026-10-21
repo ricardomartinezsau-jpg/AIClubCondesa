@@ -11,3 +11,6 @@ __pycache__/
 # Carpetas que genera ADK al correr la libreta
 sample-agent/
 .claude/
+
+# Copias de trabajo que sube preparar.py a Kaggle
+.kaggle-trabajo/

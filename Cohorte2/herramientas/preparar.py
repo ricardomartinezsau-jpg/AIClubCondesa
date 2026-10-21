@@ -37,7 +37,7 @@ ESTADOS_FINALES = ("COMPLETE", "ERROR", "CANCEL")
 # communicate with service". Para poder verificarla sin que nadie pinche nada, a la COPIA
 # QUE SE SUBE (nunca al archivo que se guarda en corregido/) se le pone un respaldo que
 # lee la llave de un dataset privado. Lo que se commitea sigue siendo fiel al curso.
-DATASET_LLAVE = f"{USUARIO_KAGGLE}/claves-privadas-cohorte2"
+DATASET_LLAVE = f"{USUARIO_KAGGLE}/claves-privadas-cohorte-2"
 ARCHIVO_LLAVE = "google_api_key.txt"
 
 RESPALDO_LLAVE = f'''
@@ -295,9 +295,11 @@ def errores_del_registro(libreta: str, registro: str):
         lineas = re.findall(r"^(\w*(?:Error|Exception)): (.*)$", texto[m.end():fin], re.M)
         nombre, mensaje = lineas[-1] if lineas else ("?", "")
         fallos.append((celda, nombre, mensaje.strip()))
-    if "Authentication Error" in texto:
-        fallos.append((-1, "AvisoDeLlave",
-                       "la libreta no consiguio la llave: marca GOOGLE_API_KEY en Add-ons > Secrets"))
+    # El aviso de la llave solo importa si el respaldo del dataset tampoco la encontro:
+    # en una corrida por API el mensaje de los Secrets sale siempre, y no es un problema.
+    if "Authentication Error" in texto and "Llave tomada del dataset privado" not in texto:
+        fallos.append((-1, "SinLlave",
+                       f"ni los Secrets ni el dataset {DATASET_LLAVE} dieron la llave"))
     return fallos
 
 

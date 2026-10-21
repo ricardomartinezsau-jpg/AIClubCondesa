@@ -42,7 +42,7 @@ Después quedan dos cosas, que sí requieren criterio:
 
 - **Token de Kaggle**: genéralo en [kaggle.com/settings/api](https://www.kaggle.com/settings/api) (*Generate New Token*) y guárdalo tal cual en `%USERPROFILE%\.kaggle\access_token`. Ojo: ese botón **muestra** el token, no descarga ningún archivo.
 - **Copia de la libreta en tu cuenta**: entra a la libreta del curso y dale a *Copy & Edit* una vez. La herramienta no puede crearla.
-- **La llave para las corridas automáticas**: una corrida lanzada por API **no alcanza los Kaggle Secrets**, aunque la casilla esté marcada (devuelve `Connection error trying to communicate with service`). Por eso la copia que se sube lleva un respaldo que lee la llave del dataset privado `ricardosauza/claves-privadas-cohorte2`. Ese respaldo **no se guarda** en `corregido/`: lo que se publica sigue siendo fiel a lo que hace un alumno, que sí usa los Secrets.
+- **La llave para las corridas automáticas**: una corrida lanzada por API **no alcanza los Kaggle Secrets**, aunque la casilla esté marcada (devuelve `Connection error trying to communicate with service`). Por eso la copia que se sube lleva un respaldo que lee la llave del dataset privado `ricardosauza/claves-privadas-cohorte-2`. Ese respaldo **no se guarda** en `corregido/`: lo que se publica sigue siendo fiel a lo que hace un alumno, que sí usa los Secrets.
 
 ## Formato de las fichas
 
