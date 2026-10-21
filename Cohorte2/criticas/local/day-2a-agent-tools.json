@@ -1,0 +1,37 @@
+{
+  "resumen": "Corrida en Windows con Python 3.12 y google-adk 2.12. De 45 celdas (14 de código), 2 tuvieron que cambiar: 1 porque la llave se pedía a un servicio que solo existe dentro de Kaggle y 1 porque los reintentos dejan la celda colgada casi 2 minutos cuando se acaba la cuota. Con esos dos cambios la libreta corre completa en local: los dos agentes de divisas contestan y el ejecutor de código escribe y corre su propio Python.",
+  "criticas": [
+    {
+      "celda": 9,
+      "titulo": "La llave se leía de un servicio que solo existe en Kaggle",
+      "categoria": "entorno-kaggle",
+      "error_real": "ModuleNotFoundError: No module named 'kaggle_secrets'\nY después, en las dos celdas que llaman al modelo (24 y 32):\nValueError: No API key was provided. Please pass a valid API key.\nY en cascada, la celda 34:\nNameError: name 'response' is not defined",
+      "por_que": "`kaggle_secrets` es la caja fuerte de llaves de Kaggle. Fuera de Kaggle esa librería no existe, así que la celda truena en el `import`, antes siquiera de llegar al `try` que iba a atrapar el error. La llave nunca se carga y cada celda que llama al modelo falla. La 34 ni siquiera llega a fallar por el modelo: se cae porque la variable `response` que esperaba nunca se creó. Es el mismo problema de day-1a y day-1b.",
+      "como_se_arreglo": "Igual que en las libretas anteriores: la llave se guarda en un archivo `.env` en tu computadora (nunca se sube a GitHub) y se carga con `python-dotenv`. Si no la encuentra, te dice cómo crearla en lugar de tronar.",
+      "verificado": true
+    },
+    {
+      "celda": 15,
+      "titulo": "Los reintentos cuelgan la celda casi 2 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "En esta corrida no se agotó la cuota, así que el problema no apareció solo. Se midió aparte contra un servidor falso que siempre contesta 429 RESOURCE_EXHAUSTED (no gasta cuota): con `exp_base=7` la llamada se quedó colgada 118.8 segundos antes de mostrar:\nClientError: 429 RESOURCE_EXHAUSTED.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando se acaba la cuota, la celda se queda «corriendo» unos 2 minutos sin decir nada y parece que la libreta se trabó. Aquí pesa menos que en day-1b, porque no hay agentes buscando en Google, pero el agente mejorado de la sección 3 llama al modelo varias veces por pregunta (una por el agente principal y otra por el especialista en cálculo), así que topar la cuota sigue siendo fácil.",
+      "como_se_arreglo": "Igual que en day-1a y day-1b: `exp_base=2`, con esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en 16.8 segundos (medido con el mismo servidor falso). Con cuota disponible, la libreta corrió completa con este cambio.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "En Kaggle el ADK ya viene puesto; en tu computadora no",
+      "texto": "La libreta no trae una celda que instale nada, porque el entorno de Kaggle ya incluye `google-adk`. En local hay que instalarlo antes (`pip install google-adk python-dotenv jupyter`). No es un error de la libreta: es una suposición sobre dónde se corre. No hizo falta cambiar código."
+    },
+    {
+      "titulo": "Un aviso amarillo que no es un error",
+      "texto": "Al correr el primer agente aparece: «UserWarning: [EXPERIMENTAL] feature FeatureName.JSON_SCHEMA_FOR_FUNC_DECL is enabled». Es el ADK avisando que la forma en que describe tus herramientas al modelo todavía es experimental. No rompe nada y la libreta sigue de largo."
+    },
+    {
+      "titulo": "El ejecutor de código sí funciona fuera de Kaggle",
+      "texto": "La sección 3 usa `BuiltInCodeExecutor`, que hace que el modelo escriba Python y lo corra para no equivocarse en la aritmética. Corrió igual en local: generó el cálculo de la conversión y lo ejecutó. No depende de Kaggle."
+    }
+  ]
+}
