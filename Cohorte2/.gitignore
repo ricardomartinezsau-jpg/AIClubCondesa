@@ -11,3 +11,7 @@ __pycache__/
 # Carpetas que genera ADK al correr la libreta
 sample-agent/
 .claude/
+
+
+# Evidencia y borradores que genera preparar.py
+.borradores/

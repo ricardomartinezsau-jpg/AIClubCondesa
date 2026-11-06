@@ -1,0 +1,32 @@
+{
+  "resumen": "Corrida en Kaggle (Python 3.11, la imagen del curso de octubre de 2026). Aquí la libreta llega mucho más lejos que en local: la llave y las importaciones funcionan tal cual, y de 45 celdas solo hubo que cambiar 1, la 15, porque ante un error de cuota la libreta se queda congelada unos 2 minutos sin avisar. Con ese cambio corrió completa: los dos agentes de divisas contestan y el ejecutor de código escribe y corre su propio Python.",
+  "criticas": [
+    {
+      "celda": 15,
+      "titulo": "Los reintentos congelan la libreta casi 2 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "En esta corrida no se agotó la cuota, así que el problema no apareció solo. Se midió aparte contra un servidor falso que siempre contesta 429 RESOURCE_EXHAUSTED (no gasta cuota): con `exp_base=7` la llamada se quedó colgada 118.8 segundos antes de mostrar:\nClientError: 429 RESOURCE_EXHAUSTED.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando se acaba la cuota, la celda se queda «corriendo» unos 2 minutos sin decir nada y parece que Kaggle se trabó. En esta libreta el agente mejorado de la sección 3 llama al modelo varias veces por pregunta —una el agente principal y otra el especialista en cálculo—, así que topar la cuota es fácil.",
+      "como_se_arreglo": "Igual que en day-1a y day-1b: `exp_base=2`, con esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en 16.8 segundos (medido con el mismo servidor falso). Con este cambio la libreta corrió completa en Kaggle.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "La celda de la llave aquí no se toca, y en tu computadora sí",
+      "texto": "Esta es la diferencia grande entre los dos entornos. En Kaggle la celda 9 funciona tal cual: pide la llave al almacén de secretos y la obtiene, siempre que hayas marcado GOOGLE_API_KEY en Add-ons → Secrets. En tu computadora esa misma celda truena en el `import`, porque la librería de secretos de Kaggle no existe fuera de Kaggle. Por eso el corregido local cambia 2 celdas y el de Kaggle solo 1."
+    },
+    {
+      "titulo": "El mismo fallo se ve distinto en cada entorno",
+      "texto": "Vale la pena mirarlo: si te falta la llave, en local la libreta revienta de inmediato en la celda 9 y sabes dónde estás parado. En Kaggle no revienta: la celda se traga el error con un mensaje amable, la libreta sigue ocho celdas más, y recién muere en la 24 con «Missing key inputs argument», un mensaje que no menciona la llave por ningún lado. El error aparece lejos del problema."
+    },
+    {
+      "titulo": "El ADK ya viene puesto",
+      "texto": "La libreta no instala nada porque el entorno de Kaggle ya incluye `google-adk`. Fuera de Kaggle hay que instalarlo a mano. No es un error: es una suposición sobre dónde se corre."
+    },
+    {
+      "titulo": "Cómo se verificó esta corrida",
+      "texto": "Las corridas que se lanzan por programa (con la API de Kaggle) no alcanzan el almacén de secretos, aunque la casilla esté marcada: la libreta recibe «Connection error trying to communicate with service». Los secretos sí funcionan cuando una persona corre la libreta desde el editor, que es lo que hace un alumno. Para poder verificar sin intervención, la copia que se sube a Kaggle lleva un respaldo que lee la llave de un conjunto de datos privado. Ese respaldo no está en el archivo de esta carpeta: lo que se publica es fiel a lo que hace un alumno."
+    }
+  ]
+}

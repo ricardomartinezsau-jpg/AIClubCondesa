@@ -1,0 +1,59 @@
+{
+  "resumen": "Corrida en Windows con Python 3.12 y google-adk 2.12. De 33 celdas (13 de código), 3 tuvieron que cambiar: la llave se pedía a un servicio que solo existe en Kaggle, los reintentos dejaban celdas colgadas casi 2 minutos, y el servidor del agente de catálogo no podía arrancar ni contestar en Windows. Lo engañoso de esta libreta es que ninguna celda marcaba error: el servidor moría en silencio y el agente de soporte solo respondía «no pude conectar». Con los tres cambios corre completa y las tres preguntas regresan los datos exactos del catálogo.",
+  "criticas": [
+    {
+      "celda": 7,
+      "titulo": "La llave se leía de un servicio que solo existe en Kaggle",
+      "categoria": "entorno-kaggle",
+      "error_real": "ModuleNotFoundError: No module named 'kaggle_secrets'\nY después, en las tres celdas que preguntan al agente (24, 26 y 27):\nValueError: No API key was provided. Please pass a valid API key.",
+      "por_que": "`kaggle_secrets` es la caja fuerte de llaves de Kaggle. Fuera de Kaggle esa librería no existe, así que la celda truena en el `import`, antes siquiera de llegar al `try` que iba a atrapar el error. La llave nunca se carga y cada celda que llama al modelo falla después.",
+      "como_se_arreglo": "La llave se guarda en un archivo `.env` en tu computadora (nunca se sube a GitHub) y se carga con `python-dotenv`. Si no la encuentra, avisa cómo crearla en lugar de tronar.",
+      "verificado": true
+    },
+    {
+      "celda": 11,
+      "titulo": "Los reintentos cuelgan la celda casi 2 minutos",
+      "categoria": "proceso-bloqueante",
+      "error_real": "En esta corrida no se agotó la cuota, así que el problema no apareció solo. Medido aparte contra un servidor falso que siempre contesta 429 RESOURCE_EXHAUSTED (no gasta cuota): con `exp_base=7` la llamada se quedó colgada 118.8 segundos; con `exp_base=2`, 16.8.",
+      "por_que": "Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando se acaba la cuota, la celda se queda «corriendo» unos 2 minutos sin decir nada y parece que todo se trabó.",
+      "como_se_arreglo": "`exp_base=2`, con esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en unos 17 segundos.",
+      "verificado": true
+    },
+    {
+      "celda": 17,
+      "titulo": "Los reintentos cuelgan la celda casi 2 minutos (en el código del servidor)",
+      "categoria": "proceso-bloqueante",
+      "error_real": "En esta corrida no se agotó la cuota, así que el problema no apareció solo. Medido aparte contra un servidor falso que siempre contesta 429 RESOURCE_EXHAUSTED (no gasta cuota): con `exp_base=7` la llamada se quedó colgada 118.8 segundos; con `exp_base=2`, 16.8.",
+      "por_que": "Es el mismo problema de la celda 11, pero en la copia del agente de catálogo que esta celda escribe a un archivo y arranca como servidor aparte. Con `exp_base=7` cada reintento espera 7 veces más que el anterior: 1, 7, 49 y luego 60 segundos (la librería pone un tope de 60 por espera). Cuando se acaba la cuota, la celda se queda «corriendo» unos 2 minutos sin decir nada y parece que todo se trabó.",
+      "como_se_arreglo": "`exp_base=2`, con esperas de 1, 2, 4 y 8 segundos. Sigue reintentando los errores pasajeros, pero si la cuota está agotada lo dice en unos 17 segundos.",
+      "verificado": true
+    },
+    {
+      "celda": 17,
+      "titulo": "El servidor del segundo agente arrancaba con otro Python y moría en silencio",
+      "categoria": "dependencia",
+      "error_real": "La celda no marca error. Tras 150 segundos imprime:\n⚠️  Server may not be ready yet. Check manually if needed.\nArrancado a mano con la misma orden, el servidor muere al instante con:\nModuleNotFoundError: No module named 'google.adk'\n(el `uvicorn` que encontró Windows era el de otro Python instalado aparte del proyecto). En cascada, la celda 19 imprime «❌ Error fetching agent card … WinError 10061» y las celdas 24, 26 y 27 responden «Failed to resolve remote A2A agent product_catalog_agent».\nYa con el Python correcto pero la bitácora todavía al tubo, el servidor arrancó y las tres preguntas se colgaron hasta el tope de 10 minutos cada una (CancelledError).",
+      "por_que": "La celda lanza el servidor escribiendo solo `uvicorn`, y Windows usa el primer `uvicorn` que encuentra en el PATH, que puede ser el de otro Python de tu computadora, sin las librerías del curso. Ese servidor muere al arrancar, pero su error va a un tubo (`PIPE`) que nadie lee: la celda espera 150 segundos, dice «Server may not be ready» y sigue de largo. Y aun con el Python correcto, ese mismo tubo es el problema: en Windows es chico, se llena con la bitácora del servidor a la primera pregunta y el servidor se congela a media respuesta. Además la celda usaba `/tmp`, que en Windows solo existe si alguien lo creó, y nunca apagaba el servidor, que se quedaba ocupando el puerto 8001.",
+      "como_se_arreglo": "Se lanza con `sys.executable -m uvicorn`, el mismo Python que corre la libreta. El archivo va a la carpeta temporal del sistema (`tempfile.gettempdir()`) y la bitácora del servidor a `product_catalog_server.log` en esa carpeta, en vez del tubo. Si el servidor muere, la espera se corta y se imprime su error real. Y el servidor se apaga solo al cerrar la libreta.",
+      "verificado": true
+    }
+  ],
+  "notas": [
+    {
+      "titulo": "Hay que instalar el soporte A2A aparte",
+      "texto": "`pip install google-adk` no trae lo necesario para que dos agentes se hablen: sin más, la celda 9 truena con «No module named 'a2a'». Hay que instalar `pip install \"google-adk[a2a]\"`. En Kaggle ya viene puesto. No hizo falta cambiar código."
+    },
+    {
+      "titulo": "Cómo sabemos que los dos agentes sí se hablaron",
+      "texto": "El agente de soporte no tiene herramientas propias: todo lo que sabe del catálogo se lo contesta el agente remoto. Las tres respuestas traen los precios y existencias exactos del catálogo (iPhone 15 Pro a $999 con 8 unidades, Sony WH-1000XM5 a $399 con 67), así que la información sí viajó por A2A."
+    },
+    {
+      "titulo": "En tu computadora la respuesta puede salir dos veces",
+      "texto": "Con google-adk 2.12 cada pregunta imprime la respuesta repetida: llega una vez del agente remoto y otra del agente de soporte, y la función de prueba imprime toda respuesta final. En Kaggle, con la versión del curso, sale una sola vez. Es solo cómo se muestra; no cambia lo que contestan."
+    },
+    {
+      "titulo": "La tarjeta del agente dice «URL: None»",
+      "texto": "La celda 19 muestra `URL: None` en local y `http://localhost:8001` en Kaggle: la versión más nueva de la librería A2A guarda la dirección en otro campo de la tarjeta. La conexión funciona igual."
+    }
+  ]
+}
