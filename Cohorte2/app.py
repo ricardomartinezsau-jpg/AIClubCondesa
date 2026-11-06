@@ -55,7 +55,13 @@ def leer_criticas(nombre: str, entorno: str) -> dict:
     ruta = CRITICAS / entorno / (Path(nombre).stem + ".json")
     if not ruta.exists():
         return {"resumen": "", "criticas": []}
-    return json.loads(ruta.read_text(encoding="utf-8"))
+    # Una coma de más en la ficha no debe apagar la página entera: el Crudo no depende de ella.
+    try:
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        return {"resumen": "", "criticas": [],
+                "_error": f"La ficha {ruta.name} tiene un error de sintaxis en la línea {e.lineno}, "
+                          f"columna {e.colno}: {e.msg}."}
 
 
 def fuente(celda) -> str:
@@ -139,7 +145,9 @@ def diff_unificado(antes: str, despues: str) -> str:
 
 def mostrar_rayos_x(crudo, corregido, fichas: dict, entorno: str):
     cambiadas = celdas_cambiadas(crudo, corregido)
-    criticas = {c["celda"]: c for c in fichas.get("criticas", [])}
+    if fichas.get("_error"):
+        st.warning(fichas["_error"] + " Mientras tanto, el Crudo y el Corregido se ven igual.")
+    criticas = {c["celda"]: c for c in fichas.get("criticas", []) if "celda" in c}
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Celdas en la libreta", len(crudo.cells))
@@ -154,6 +162,10 @@ def mostrar_rayos_x(crudo, corregido, fichas: dict, entorno: str):
     sin_ficha = [i for i in cambiadas if i not in criticas]
     if sin_ficha:
         st.warning(f"Celdas cambiadas sin explicación: {sin_ficha}")
+        with st.expander("Plantilla para escribir esas fichas"):
+            st.code(json.dumps([{"celda": i, "titulo": "", "categoria": "", "error_real": "",
+                                 "por_que": "", "como_se_arreglo": "", "verificado": True}
+                                for i in sin_ficha], ensure_ascii=False, indent=2), language="json")
 
     vista = st.radio(
         "Vista del cambio",
@@ -197,8 +209,8 @@ def mostrar_rayos_x(crudo, corregido, fichas: dict, entorno: str):
         st.divider()
         st.subheader("Notas que no requirieron cambio")
         for nota in notas:
-            with st.expander(nota["titulo"]):
-                st.markdown(nota["texto"])
+            with st.expander(nota.get("titulo", "Sin título")):
+                st.markdown(nota.get("texto", ""))
 
 
 # ---------- Página ----------

@@ -18,7 +18,7 @@ El visor no llama a ningún modelo: no necesita llave ni cuesta por uso.
 ## Correr las libretas corregidas
 
 1. Copia `.env.example` como `.env` y pon tu llave de Gemini (`.env` nunca se sube).
-2. Instala lo que pide la libreta (para ADK: `pip install google-adk python-dotenv jupyter`).
+2. Instala lo que pide la libreta (para ADK: `pip install google-adk python-dotenv jupyter`; para las libretas de Agent2Agent, `pip install "google-adk[a2a]"`).
 3. Abre `corregido/local/<libreta>.ipynb` en Jupyter. En Kaggle, importa `corregido/kaggle/<libreta>.ipynb` (File → Import Notebook) y conecta `GOOGLE_API_KEY` en Add-ons → Secrets.
 
 ## Sumar una libreta nueva
@@ -29,7 +29,9 @@ Un comando hace todo lo mecánico:
 python herramientas/preparar.py todo https://www.kaggle.com/code/kaggle5daysofai/<libreta>
 ```
 
-Baja el crudo y registra su huella, lo corre tal cual en los dos entornos, aplica los arreglos que ya conocemos, vuelve a correr para comprobar que quedaron limpios, y al final imprime **los errores reales de cada entorno con su número de celda**. Los pasos sueltos son `bajar`, `local` y `kaggle`.
+Baja el crudo y registra su huella, corre los dos entornos **a la vez**, aplica los arreglos que ya conocemos, vuelve a correr para comprobar que quedaron limpios, imprime **los errores reales de cada entorno con su número de celda** y deja un **borrador de cada ficha** ya relleno con lo que se puede saber solo. Los pasos sueltos son `bajar`, `local`, `kaggle` y `fichas`.
+
+En el borrador, lo que falta por escribir va marcado con `<<...>>`. `verificar.py` falla mientras queden huecos, así que un borrador a medias no se puede commitear por error. Si pierdes la terminal, `preparar.py fichas <libreta>` los vuelve a emitir sin correr nada: la evidencia queda guardada en `.borradores/`.
 
 Busca los arreglos por contenido, no por número de celda, así que sirve en cualquier libreta. Y si un corregido ya trae arreglos hechos a mano que la herramienta no sabe hacer, **no lo pisa**: deja su versión al lado como `<libreta>.generado.ipynb` y avisa.
 
@@ -41,7 +43,6 @@ Después quedan dos cosas, que sí requieren criterio:
 ### Lo que hay que preparar una sola vez
 
 - **Token de Kaggle**: genéralo en [kaggle.com/settings/api](https://www.kaggle.com/settings/api) (*Generate New Token*) y guárdalo tal cual en `%USERPROFILE%\.kaggle\access_token`. Ojo: ese botón **muestra** el token, no descarga ningún archivo.
-- **Copia de la libreta en tu cuenta**: entra a la libreta del curso y dale a *Copy & Edit* una vez. La herramienta no puede crearla.
 - **La llave para las corridas automáticas**: una corrida lanzada por API **no alcanza los Kaggle Secrets**, aunque la casilla esté marcada (devuelve `Connection error trying to communicate with service`). Por eso la copia que se sube lleva un respaldo que lee la llave del dataset privado `ricardosauza/claves-privadas-cohorte-2`. Ese respaldo **no se guarda** en `corregido/`: lo que se publica sigue siendo fiel a lo que hace un alumno, que sí usa los Secrets.
 
 ## Formato de las fichas

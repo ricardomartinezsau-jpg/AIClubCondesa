@@ -23,7 +23,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 PATRON_LLAVE = re.compile(r"AIza[0-9A-Za-z_\-]{35}")
 # Enlace al proxy de Kaggle con el token de una sesión: la libreta pide no compartirlo.
 PATRON_PROXY_KAGGLE = re.compile(r"jupyter-proxy\.kaggle\.net/k/\d+/eyJ")
-IGNORADOS = {".venv", ".env", "__pycache__", ".ipynb_checkpoints", "sample-agent"}
+IGNORADOS = {".venv", ".env", "__pycache__", ".ipynb_checkpoints", "sample-agent",
+             ".borradores", ".kaggle-trabajo", ".git"}
 
 
 def fuente(celda) -> str:
@@ -74,8 +75,23 @@ def revisar_correcciones(errores: list[str]):
             i for i, (a, b) in enumerate(zip(crudo.cells, corregido.cells)) if fuente(a) != fuente(b)
         }
         fichas_ruta = RAIZ / "criticas" / entorno / (ruta.stem + ".json")
-        fichas = json.loads(fichas_ruta.read_text(encoding="utf-8")) if fichas_ruta.exists() else {}
-        con_ficha = {c["celda"] for c in fichas.get("criticas", [])}
+        fichas = {}
+        if fichas_ruta.exists():
+            try:
+                fichas = json.loads(fichas_ruta.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                # Decirlo en una línea, no con un volcado de Python: casi siempre es una coma de más.
+                errores.append(f"criticas/{entorno}/{ruta.stem}.json: JSON mal escrito, "
+                               f"línea {e.lineno} columna {e.colno} ({e.msg})")
+                continue
+        texto_ficha = fichas_ruta.read_text(encoding="utf-8") if fichas_ruta.exists() else ""
+        if "<<" in texto_ficha:
+            errores.append(f"criticas/{entorno}/{ruta.stem}.json: es un borrador a medias "
+                           f"({texto_ficha.count('<<')} huecos «<<...>>» sin llenar)")
+        sin_celda = [c for c in fichas.get("criticas", []) if "celda" not in c]
+        if sin_celda:
+            errores.append(f"criticas/{entorno}/{ruta.stem}.json: {len(sin_celda)} crítica(s) sin campo «celda»")
+        con_ficha = {c["celda"] for c in fichas.get("criticas", []) if "celda" in c}
 
         for i in sorted(cambiadas - con_ficha):
             errores.append(f"{etiqueta}: la celda {i} cambió y no tiene ficha")

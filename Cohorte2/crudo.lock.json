@@ -1,5 +1,8 @@
 {
   "day-1a-from-prompt-to-action.ipynb": "708f23ddddfa68005d4d632d0e39ebfb95218907ead7437261dc8912126c5fc1",
   "day-1b-agent-architectures.ipynb": "ba478493d1031b52b90106c52c3893614d6722a5d3cd11f470251657d5714d73",
-  "day-2a-agent-tools.ipynb": "e47a49eeadcfd991057db19218be4109fe76cfc3a53f4869f4d6bce51627de36"
+  "day-2a-agent-tools.ipynb": "e47a49eeadcfd991057db19218be4109fe76cfc3a53f4869f4d6bce51627de36",
+  "day-2b-agent-tools-best-practices.ipynb": "9554b8bbed25f1c9b8456f77edd8e8caf62e19dd1d328a09a2da2c33698a77c7",
+  "day-3a-agent-sessions.ipynb": "9af5288c5260a7ff8fb8de867333c42bdec3fc1c64fc1f209c3e3e611d113184",
+  "day-5a-agent2agent-communication.ipynb": "209827006bfadd1e082c88b618eb4bc1b47e2c9ff99f1c3f0b58eea220da73c8"
 }

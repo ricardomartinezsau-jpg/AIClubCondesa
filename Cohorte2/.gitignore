@@ -12,5 +12,6 @@ __pycache__/
 sample-agent/
 .claude/
 
-# Copias de trabajo que sube preparar.py a Kaggle
-.kaggle-trabajo/
+
+# Evidencia y borradores que genera preparar.py
+.borradores/
